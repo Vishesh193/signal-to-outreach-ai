@@ -5,7 +5,7 @@ import SignalsPanel from './components/SignalsPanel.jsx'
 import BriefPanel from './components/BriefPanel.jsx'
 import EmailPreview from './components/EmailPreview.jsx'
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || ''
 
 export default function App() {
   const [status, setStatus] = useState('idle') // idle | running | complete | error

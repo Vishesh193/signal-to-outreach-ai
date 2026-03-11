@@ -9,6 +9,7 @@ load_dotenv()
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
@@ -28,6 +29,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ─── Static Files (Frontend) ────────────────────────────────────────────────
+# In product on HF Spaces / Render, we serve built frontend dist from here
+if os.path.exists("dist"):
+    app.mount("/", StaticFiles(directory="dist", html=True), name="static")
 
 
 # ─── Request / Response Models ───────────────────────────────────────────────
