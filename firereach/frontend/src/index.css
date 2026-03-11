@@ -1,0 +1,56 @@
+/* ─── FireReach Global Reset & Responsive Layout ─────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #0a0a0f;
+  color: #e8e8f0;
+}
+
+/* ─── Responsive grid: 420px + 1fr on desktop, stack on mobile ─── */
+@media (max-width: 900px) {
+  /* Override the JS inline grid to single column */
+  main {
+    grid-template-columns: 1fr !important;
+    padding: 16px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Header padding */
+  header > div {
+    padding: 12px 16px !important;
+  }
+
+  /* Tighten section spacing */
+  main {
+    gap: 16px !important;
+    padding: 12px !important;
+  }
+}
+
+/* ─── Scrollbar styling ─────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 80, 0, 0.25);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 80, 0, 0.5);
+}
+
+/* ─── Status dot pulse animation (used in App.jsx inline styles) ─── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.85); }
+}
