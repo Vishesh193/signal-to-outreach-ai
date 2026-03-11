@@ -1,0 +1,9 @@
+{
+  "python.languageServer": "Pylance",
+  "python.analysis.typeCheckingMode": "off",
+  "pyre2.enabled": false,
+  "python.analysis.extraPaths": [
+    "./firereach/backend",
+    "./firereach/backend/tools"
+  ]
+}
