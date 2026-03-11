@@ -62,7 +62,7 @@ export default function AgentLog({ logs, status }) {
                 )}
                 {log.step === 'sent' && log.data && (
                   <span style={{ ...styles.logDetail, color: '#00ff88' }}>
-                    ✓ Delivered → {log.data.recipient} | ID: {log.data.email_id}
+                    ✓ Delivered → {log.data.recipient?.replace(/^(.)(.*)(.@.*)$/, (_, f, m, l) => f + '*'.repeat(m.length) + l)} | ID: {log.data.email_id}
                   </span>
                 )}
               </div>

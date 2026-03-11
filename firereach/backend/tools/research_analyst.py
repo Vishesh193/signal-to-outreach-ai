@@ -1,6 +1,7 @@
 # tools/research_analyst.py
 # AI-powered account brief generator: signals + ICP → strategic 2-paragraph brief
 
+import json
 import asyncio
 import os
 from datetime import datetime
@@ -66,37 +67,42 @@ async def tool_research_analyst(signals: dict, icp: str) -> dict:
     signal_text = _build_signal_context(signals)
 
     prompt = f"""You are a world-class B2B sales strategist and account researcher.
+    
+    Your task is to write a precise, insightful 2-paragraph "Account Brief" for a sales team and evaluate the alignment score.
 
-Your task is to write a precise, insightful 2-paragraph "Account Brief" for a sales team.
+    ## Target Company Signals (LIVE DATA — use these specifically):
+    {signal_text}
 
-## Target Company Signals (LIVE DATA — use these specifically):
-{signal_text}
+    ## Seller's ICP (Ideal Customer Profile):
+    {icp}
 
-## Seller's ICP (Ideal Customer Profile):
-{icp}
+    ## Instructions:
+    1. Paragraph 1: Describe the company's current momentum based ONLY on the signals above. Be specific — name the signals (funding amount, number of roles, etc.).
+    2. Paragraph 2: Connect their growth trajectory to a specific pain point the seller's ICP directly solves. Show why NOW is the right time.
+    3. Alignment Score: Based on the signals provided and the ICP, calculate a score from 0-100 on how well this company aligns with the ICP. 100 means perfect fit, 0 means no fit.
 
-## Instructions:
-- Paragraph 1: Describe the company's current momentum based ONLY on the signals above. Be specific — name the signals (funding amount, number of roles, etc.).
-- Paragraph 2: Connect their growth trajectory to a specific pain point the seller's ICP directly solves. Show why NOW is the right time.
-- Be sharp, analytical, non-generic. Sound like a McKinsey analyst who understands sales.
-- Do NOT invent facts not present in the signals.
-- Length: 100-150 words total.
-
-Write only the brief, no preamble or headers."""
+    Return ONLY valid JSON with these keys:
+    {{
+      "account_brief": "the 2-paragraph brief",
+      "alignment_score": 85
+    }}"""
 
     response = await client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
         temperature=0.4,
-        max_tokens=400,
+        max_tokens=500,
     )
 
-    brief = response.choices[0].message.content.strip()
+    result_json = json.loads(response.choices[0].message.content)
+    brief = result_json.get("account_brief", "").strip()
+    score = result_json.get("alignment_score", 0)
 
     return {
         "account_brief": brief,
         "company": signals.get("company", ""),
-        "icp_alignment_score": _compute_alignment_score(signals),
+        "icp_alignment_score": score,
         "key_signals_used": _extract_key_signals(signals),
         "generated_at": datetime.utcnow().isoformat(),
     }

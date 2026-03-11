@@ -43,7 +43,9 @@ export default function EmailPreview({ email, loading }) {
       <div style={styles.deliveryBar}>
         <div style={styles.deliveryItem}>
           <span style={styles.deliveryLabel}>TO</span>
-          <span style={styles.deliveryValue}>{email.recipient}</span>
+          <span style={styles.deliveryValue}>
+            {email.recipient?.replace(/^(.)(.*)(.@.*)$/, (_, f, m, l) => f + '*'.repeat(m.length) + l)}
+          </span>
         </div>
         <div style={styles.deliveryItem}>
           <span style={styles.deliveryLabel}>ID</span>

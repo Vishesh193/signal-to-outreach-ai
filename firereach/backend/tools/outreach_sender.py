@@ -59,18 +59,19 @@ Sender: {sender_name} at {sender_company}
 
 ## Your Task:
 Write a cold outreach email that:
-1. Opens with a SPECIFIC reference to a real signal (funding, hiring, news — not generic)
+1. Opens with a SPECIFIC, data-driven reference to a real signal (funding, hiring, news — not generic)
 2. Connects their growth moment to a real business risk or opportunity
 3. Makes a single, clear value proposition tied to their current situation
 4. Ends with a low-friction CTA (15-min call, not "buy now")
-5. Feels written by a human who did their homework, NOT a template
+5. Feels written by a human who did their homework, NOT a template.
+6. **STRICT REQUIREMENT**: You MUST reference at least 3-4 specific signals from the 'Live Signals Captured' section above. Mentioning only 1 or 2 is a failure.
 
 Return ONLY valid JSON with these exact keys:
 {{
   "subject": "compelling subject line under 8 words",
   "text_body": "plain text email body (150-200 words max)",
   "html_body": "same email as clean HTML with <p> tags",
-  "signals_referenced": ["signal 1 referenced", "signal 2 referenced"]
+  "signals_referenced": ["signal 1 referenced", "signal 2 referenced", "signal 3 referenced"]
 }}"""
 
     response = await groq_client.chat.completions.create(

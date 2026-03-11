@@ -1,263 +1,94 @@
-# FireReach — Agent Documentation
-
-**Autonomous Outreach Engine | Rabbitt AI Submission**
-
----
-
-## Overview
-
-FireReach is a fully autonomous B2B outreach agent. Given a target company and an Ideal Customer Profile (ICP), it:
-1. Harvests live buyer signals from real APIs (no hallucination)
-2. Synthesizes signals + ICP into a strategic account brief
-3. Writes a hyper-personalized email and dispatches it automatically
-
-Zero human intervention from input to sent email.
+# FireReach — Autonomous GTM Agent Documentation
+**Submission for Rabbitt AI | Autonomous Outreach Engine**
 
 ---
 
-## Logic Flow
+## 🚀 Overview
 
-```
-USER INPUT
-  ├─ target_company: "Stripe"
-  ├─ icp: "We sell cybersecurity training to Series B startups"
-  └─ recipient_email: "cto@stripe.com"
-          │
-          ▼
-  ┌──────────────────────────────────┐
-  │  GROQ AGENT (llama3-70b-8192)   │
-  │  System Prompt: FireReach Persona│
-  └──────────────────┬───────────────┘
-                     │  decides to call
-                     ▼
-  ┌──────────────────────────────────────────────┐
-  │  TOOL 1: tool_signal_harvester               │
-  │  Input: { company_name: "Stripe" }           │
-  │  Process: 4 parallel Serper API calls        │
-  │    - News: "Stripe funding round 2025"       │
-  │    - News: "Stripe hiring engineering 2025"  │
-  │    - News: "Stripe leadership changes 2025"  │
-  │    - News: "Stripe product launch 2025"      │
-  │  Output: Structured signals JSON             │
-  │  Source: 100% API — deterministic            │
-  └──────────────────────┬───────────────────────┘
-                         │ signals passed
-                         ▼
-  ┌──────────────────────────────────────────────┐
-  │  TOOL 2: tool_research_analyst               │
-  │  Input: { signals, icp }                     │
-  │  Process: Groq LLM call with signals context │
-  │  Output:                                     │
-  │    - account_brief (2 paragraphs)            │
-  │    - icp_alignment_score (0-100)             │
-  │    - key_signals_used (array)                │
-  └──────────────────────┬───────────────────────┘
-                         │ brief passed
-                         ▼
-  ┌──────────────────────────────────────────────┐
-  │  TOOL 3: tool_outreach_automated_sender      │
-  │  Input: { account_brief, signals, icp,       │
-  │           recipient_email, ... }             │
-  │  Process:                                    │
-  │    Step A: Groq writes personalized email    │
-  │    Step B: Resend API dispatches email       │
-  │  Output: { email_id, subject, preview, ... } │
-  └──────────────────────────────────────────────┘
-          │
-          ▼
-  Agent returns final summary
-  Frontend displays: signals + brief + email preview + confirmation
+FireReach is a fully autonomous B2B outreach engine. Unlike traditional "templated" tools, FireReach grounds every outreach in **real-time buyer signals** harvested via live APIs. 
+
+Given a target company (e.g., "Apple") and an Ideal Customer Profile (ICP), the agent:
+1. **Harvests** live signals (funding, hiring, leadership changes, product news) via Serper API.
+2. **Synthesizes** research into a strategic Account Brief and calculates an **ICP Alignment Score** via LLM.
+3. **Drafts & Dispatches** a hyper-personalized email referencing at least 3-4 specific signals via Resend API.
+
+---
+
+## 🛠 Project Architecture
+
+### Logic Flow (Agentic Loop)
+The agent follows a strict deterministic sequence enforced by its system prompt:
+
+```mermaid
+graph TD
+    A[User Input: Target + ICP] --> B[tool_signal_harvester]
+    B -->|12+ Live Signals| C[tool_research_analyst]
+    C -->|Strategic Brief + Score| D[tool_outreach_automated_sender]
+    D -->|Writes Email with 3-4 Signals| E[Resend API: Dispatch]
+    E --> F[Confirmed Delivery ID]
 ```
 
-### Why This Flow Guarantees Signal-Grounded Emails
+### 1. Signal Harvester (`tool_signal_harvester`)
+- **Action**: Performs 4 concurrent searches across Google News for "funding", "hiring", "leadership", and "product launch" for the target company.
+- **Safety**: 100% deterministic (no LLM hallucination in data retrieval).
 
-The agent receives the full `signals` object (not a summary string) in Tool 3. The LLM prompt for email composition explicitly lists each harvested signal with its category tag and instructs the model to reference at least 2. The `signals_referenced` field in the output confirms which signals made it into the final email.
+### 2. Research Analyst (`tool_research_analyst`)
+- **Action**: Uses `llama-3.3-70b-versatile` to evaluate lead quality.
+- **Scoring**: Calculates an **Alignment Score (0-100)** based on how well the harvested signals match the seller's ICP.
 
----
-
-## Tool Schemas
-
-### Tool 1 — `tool_signal_harvester`
-
-```json
-{
-  "type": "function",
-  "function": {
-    "name": "tool_signal_harvester",
-    "description": "Fetches live, deterministic buyer signals for a target company from real-time news and search APIs. Returns funding rounds, hiring trends, leadership changes, and product announcements. This tool NEVER guesses — all data is sourced from live APIs.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "company_name": {
-          "type": "string",
-          "description": "The full name of the target company (e.g. 'Stripe', 'Notion')"
-        },
-        "domain": {
-          "type": "string",
-          "description": "Optional company domain to improve search accuracy (e.g. 'stripe.com')"
-        }
-      },
-      "required": ["company_name"]
-    }
-  }
-}
-```
-
-**Implementation**: Fires 4 parallel `POST` requests to `google.serper.dev/news` with time-scoped queries. Results are parsed into a typed `signals` object with `funding[]`, `hiring[]`, `leadership[]`, `product_news[]` arrays, each containing `{ category, title, snippet, source, url, date }`.
-
-**Determinism guarantee**: No LLM is involved. All content comes directly from Serper's Google News index.
+### 3. Outreach Sender (`tool_outreach_automated_sender`)
+- **Action**: Writes a high-converting cold email.
+- **Strict Requirement**: The LLM is forced to cite at least 3-4 specific signals from the research phase to ensure non-generic outreach.
+- **Automation**: Dispatches immediately via Resend API (default domain: `onboarding@resend.dev` or custom verified domain).
 
 ---
 
-### Tool 2 — `tool_research_analyst`
+## 🚦 Setup Instructions
 
-```json
-{
-  "type": "function",
-  "function": {
-    "name": "tool_research_analyst",
-    "description": "Takes harvested live signals and the seller's ICP to generate a 2-paragraph strategic Account Brief. Identifies specific pain points, strategic alignment, and why the prospect needs outreach NOW.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "signals": {
-          "type": "object",
-          "description": "The full signals object returned by tool_signal_harvester"
-        },
-        "icp": {
-          "type": "string",
-          "description": "The seller's ICP — who they sell to and what value they provide"
-        }
-      },
-      "required": ["signals", "icp"]
-    }
-  }
-}
-```
+### Prerequisites
+- Groq API Key (`llama-3.3-70b-versatile`)
+- Serper API Key (search research)
+- Resend API Key (email delivery)
 
-**Implementation**: Formats signals into structured markdown sections and passes them to `llama3-70b-8192` at temperature 0.4. The prompt enforces: Paragraph 1 = company situation (signal-grounded), Paragraph 2 = pain point + timing rationale. Also computes an `icp_alignment_score` (0-100) based on signal richness.
-
----
-
-### Tool 3 — `tool_outreach_automated_sender`
-
-```json
-{
-  "type": "function",
-  "function": {
-    "name": "tool_outreach_automated_sender",
-    "description": "Composes a hyper-personalized outreach email referencing live signals and the account brief, then automatically dispatches it via Resend. This is the final execution step — it both writes AND sends the email.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "account_brief": { "type": "string" },
-        "signals": { "type": "object" },
-        "icp": { "type": "string" },
-        "recipient_email": { "type": "string" },
-        "recipient_name": { "type": "string" },
-        "sender_name": { "type": "string" },
-        "sender_company": { "type": "string" }
-      },
-      "required": ["account_brief", "signals", "icp", "recipient_email"]
-    }
-  }
-}
-```
-
-**Implementation**: Two-phase internal execution:
-- **Phase A (Compose)**: Groq call with `response_format: json_object`. Returns `{ subject, text_body, html_body, signals_referenced }`.
-- **Phase B (Dispatch)**: Resend `emails.send()` API call. Returns `{ id }` confirming delivery.
-
-**Zero-Template Policy**: The prompt includes all harvested signals with category tags and prohibits generic phrasing. The `signals_referenced` output field proves which signals made it into the final copy.
-
----
-
-## System Prompt
-
-```
-You are FireReach, an elite autonomous B2B outreach agent built for Rabbitt AI.
-
-## YOUR PERSONA:
-You are methodical, data-driven, and relentlessly focused on grounding every 
-action in real signals. You think like a top-tier account executive who never 
-sends a generic email.
-
-## YOUR MISSION:
-Given a target company and an ICP, you autonomously:
-1. Harvest live signals (funding, hiring, leadership changes) using tool_signal_harvester
-2. Synthesize signals + ICP into a strategic account brief using tool_research_analyst
-3. Write and AUTOMATICALLY SEND a hyper-personalized email using tool_outreach_automated_sender
-
-## STRICT CONSTRAINTS:
-- You MUST call all three tools in order: Signal → Research → Send
-- You MUST pass the full signals object from step 1 into step 2 and step 3
-- You MUST pass the account_brief from step 2 into step 3
-- NEVER send an email without completing the research step first
-- NEVER hallucinate signals — only use data from tool_signal_harvester
-- The email MUST reference at least 2 specific signals from the harvested data
-- After tool_outreach_automated_sender completes, summarize what was done
-```
-
----
-
-## API Keys Required
-
-| Service | Purpose | Get It | Free Tier |
-|---------|---------|--------|-----------|
-| Groq | LLM agent (llama3-70b) | console.groq.com | Unlimited (rate limited) |
-| Serper | Google News/Search API | serper.dev | 2,500 free credits |
-| Resend | Email delivery | resend.com | 3,000 emails/month |
-
----
-
-## Setup Instructions
-
+### 1. Backend (FastAPI)
 ```bash
-# 1. Clone repo
-git clone https://github.com/yourusername/firereach
-cd firereach
-
-# 2. Backend (Python / FastAPI)
-cd backend
-cp .env.example .env
-# Fill in your API keys in .env
+cd firereach/backend
 pip install -r requirements.txt
-python main.py  # Starts on :8000
-# OR: uvicorn main:app --reload --port 8000
+# Create .env with GROQ_API_KEY, SERPER_API_KEY, RESEND_API_KEY, RESEND_FROM_EMAIL
+uvicorn main:app --reload --port 8000
+```
 
-# 3. Frontend (new terminal)
-cd frontend
-cp .env.example .env
+### 2. Frontend (Vite/React)
+```bash
+cd firereach/frontend
 npm install
-npm run dev  # Starts on :5173
-
-# 4. Open http://localhost:5173
+npm run dev
+# Dashboard available at http://localhost:5173
 ```
 
 ---
 
-## Deployment
-
-**Backend → Render**
-1. Connect GitHub repo to Render
-2. Set root directory: `backend`
-3. Build command: `npm install`
-4. Start command: `node server.js`
-5. Add environment variables from `.env`
-
-**Frontend → Vercel**
-1. Connect GitHub repo to Vercel
-2. Set root directory: `frontend`
-3. Add env var: `VITE_BACKEND_URL=https://your-render-url.onrender.com`
-4. Deploy
+## 🛡️ PII & Privacy (Demo Protection)
+To ensure professional demos and public-facing showcases:
+- **Email Masking**: All recipient emails are masked in the UI reasoning log and email preview (e.g., `v*******a@gmail.com`).
+- **Input Neutralization**: The system handles sensitive API keys via server-side environment variables only.
 
 ---
 
-## Evaluation Rubric Mapping
+## 📈 Evaluation Rubric Alignment
 
-| Criterion | How FireReach Satisfies It |
+| Criterion | FireReach Implementation |
 |-----------|--------------------------|
-| Tool Chaining | Agent loop enforces Signal → Research → Send via sequential tool calls with data passing |
-| Outreach Quality | Zero-template policy + signal injection in prompt + `signals_referenced` output field |
-| Automation Flow | Resend dispatch triggered inside Tool 3 automatically — no human "send" action |
-| UI/UX & Documentation | Live SSE streaming dashboard + this DOCS.md |
+| **Tool Chaining** | Agent enforces Signal → Research → Send sequence with full data context passing. |
+| **Outreach Quality** | Forced 3-signal minimum citation + 2-paragraph strategic brief grounding. |
+| **Automation Flow** | Resend dispatch occurs as a tool-execution side effect (true autonomy). |
+| **Rich Aesthetics** | Cyber-themed, glassmorphic UI with live SSE (Server-Sent Events) streaming logs. |
+
+---
+
+## 📞 Support & Configuration
+- **Sender Identification**: Update `RESEND_FROM_EMAIL` in `.env` to match your verified Resend domain for professional delivery (e.g., `alex@yourdomain.com`).
+- **Model Selection**: Standardized on `llama-3.3-70b-versatile` for the best balance of speed and copy quality.
+
+---
+**Build with ❤️ for Advanced Agentic Coding.**
